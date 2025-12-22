@@ -18,6 +18,8 @@ class MessagesService {
     this.isPending = false;
     this.pendingTab = null;
     this.pendingTriggeredFromDOMEvent = false;
+    this.pendingTimeout = null;
+    this.ignoreNextReprint = false;
   }
 
   /**
@@ -138,8 +140,11 @@ class MessagesService {
     const urls = await this.fetchAvatarsFromMessages(messages);
     resolve();
 
+    console.log("[APP] displayAvatars - calling pictureInboxList", { offset, ignoreNextReprint: this.ignoreNextReprint });
     const result = await browser.headerApi.pictureInboxList(tabId, JSON.stringify(urls), offset, false);
-    if (result.status === "needReprint") {
+    console.log("[APP] displayAvatars - result", result);
+    if (result.status === "needReprint" && !this.ignoreNextReprint) {
+      console.log("[APP] displayAvatars - triggering reprint");
       if (result.eventType === "scroll") {
         this.lastDisplayInboxListCall -= this.WAIT_TIME_MS / 2;
       }
@@ -258,11 +263,9 @@ class MessagesService {
    * @returns {Promise<void>}
    */
   async processSubbatch(subbatch, tabId, subbatchOffset) {
-    this.displayInitials(subbatch, tabId, subbatchOffset);
-    let promiseFetchAvatars = new Promise((resolve) => {
+    return new Promise((resolve) => {
       this.displayAvatars(subbatch, tabId, subbatchOffset, resolve);
     });
-    return promiseFetchAvatars;
   }
 
   /**
@@ -319,25 +322,40 @@ class MessagesService {
    * @param {Object} tab - The tab object.
    * @param {boolean} triggeredFromDOMEvent - Indicates if the call was triggered from a DOM event.
    */
-  async displayInboxList(tab, triggeredFromDOMEvent = false) {
-    if (!this.canDisplayInboxList()) {
-      this.pendingTab = tab;
-      this.pendingTriggeredFromDOMEvent = triggeredFromDOMEvent;
-      if (this.isPending) {
-        return;
+  async displayInboxList(tab, triggeredFromDOMEvent = false, force = false, ignoreFirstReprint = false) {
+    if (!force && !this.canDisplayInboxList()) {
+      if (triggeredFromDOMEvent) {
+        this.pendingTab = tab;
+        this.pendingTriggeredFromDOMEvent = triggeredFromDOMEvent;
+        if (this.isPending) {
+          return;
+        }
+        this.isPending = true;
+        const remainingTime = this.WAIT_TIME_MS - (Date.now() - this.lastDisplayInboxListCall);
+        this.pendingTimeout = setTimeout(() => {
+          this.isPending = false;
+          this.displayInboxList(this.pendingTab, this.pendingTriggeredFromDOMEvent);
+        }, remainingTime + 50);
       }
-      this.isPending = true;
-      const remainingTime = this.WAIT_TIME_MS - (Date.now() - this.lastDisplayInboxListCall);
-      setTimeout(() => {
-        this.isPending = false;
-        this.displayInboxList(this.pendingTab, this.pendingTriggeredFromDOMEvent);
-      }, remainingTime + 50);
       return;
     }
+
+    if (this.isPending) {
+      clearTimeout(this.pendingTimeout);
+      this.isPending = false;
+      this.pendingTab = null;
+    }
+
+    this.ignoreNextReprint = ignoreFirstReprint;
+
     this.updateLastDisplayInboxListCall();
     const { currentMessages, tabId, firstDisplayedMessageId } =
       await this.getMessagesAndTabId(tab);
     await this.processMessagesInboxList(currentMessages, tabId, 0, firstDisplayedMessageId);
+    // Reset ignoreNextReprint after a delay to ensure all pictureInboxList calls have completed
+    setTimeout(() => {
+      this.ignoreNextReprint = false;
+    }, 3000);
   }
 }
 

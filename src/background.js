@@ -74,14 +74,23 @@ async function onContactCreated(contactNode) {
   await contactsService.handleContactCreated(contactNode);
 }
 
+let folderChangeInProgress = false;
+
 /**
  * Displays the inbox list in a tab
  * @param {Object} tab Tab object
  */
-async function displayInboxList(tab) {
+async function displayInboxList(tab, force = false, ignoreFirstReprint = false) {
   if (!inboxListEnabled) return;
+  // Skip if a folder change is in progress and this is not the folder change call
+  if (folderChangeInProgress && !ignoreFirstReprint) {
+    console.log("[APP] displayInboxList SKIPPED - folderChangeInProgress");
+    return;
+  }
+  console.log("[APP] displayInboxList START", { force, ignoreFirstReprint, folderChangeInProgress });
   try {
-    await messagesService.displayInboxList(tab);
+    await messagesService.displayInboxList(tab, false, force, ignoreFirstReprint);
+    console.log("[APP] displayInboxList END");
   } catch (error) {
     console.warn("Error in displayInboxList:", error);
   }
@@ -102,8 +111,31 @@ function initListeners() {
     }
   );
 
-  browser.mailTabs.onDisplayedFolderChanged.addListener((tab) => {
-    displayInboxList(tab);
+  browser.mailTabs.onDisplayedFolderChanged.addListener(async (tab) => {
+    folderChangeInProgress = true;
+    
+    // Wait for messages to be loaded (max 2 seconds)
+    let attempts = 0;
+    const maxAttempts = 20;
+    while (attempts < maxAttempts) {
+      try {
+        const tabId = tab?.id ?? (await browser.mailTabs.getCurrent()).id;
+        const messages = await browser.mailTabs.getListedMessages(tabId);
+        if (messages && messages.messages && messages.messages.length > 0) {
+          break;
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+      await new Promise(resolve => setTimeout(resolve, 100));
+      attempts++;
+    }
+    
+    displayInboxList(tab, true, true);
+    // Allow other calls after a short delay
+    setTimeout(() => {
+      folderChangeInProgress = false;
+    }, 500);
   });
 
   browser.messages.onNewMailReceived.addListener(async (folder, messages) => {

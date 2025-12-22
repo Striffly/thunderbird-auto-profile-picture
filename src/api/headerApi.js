@@ -1161,9 +1161,6 @@ function uninstall(window) {
   uninstallCss(window);
 }
 
-let timeoutInitials = null;
-let timeoutInboxList = null;
-
 const EVENTS_TO_LISTEN = [
   "viewchange",
   "rowcountchange",
@@ -1178,9 +1175,7 @@ const EVENTS_TO_LISTEN = [
 const EVENTS_TABLE_TO_LISTEN = [
   "thread-changed",
   "sort-changed"
-]
-const INITIALS_TIMEOUT = 500;
-const INBOX_LIST_TIMEOUT = 1000;
+];
 
 /**
  * Handles the installation of initials on the inbox list.
@@ -1192,12 +1187,6 @@ const INBOX_LIST_TIMEOUT = 1000;
  * @returns {Promise<Object>} - An object containing the status.
  */
 async function handleInitials(window, payload, rows, offset) {
-  window.clearTimeout(window.timeoutInitials);
-  window.timeoutInitials = window.setTimeout(async () => {
-    // console.log("initials setTimeout installInboxList call");
-    await installInboxList(window, payload, rows, offset, true);
-  }, INITIALS_TIMEOUT);
-
   await installInboxList(window, payload, rows, offset, true);
   return { status: "success" };
 }
@@ -1212,12 +1201,7 @@ async function handleInitials(window, payload, rows, offset) {
  * @returns {Object} - An object containing the status and optional event type.
  */
 async function handleInboxList(window, payload, threadTree, offset) {
-  window.clearTimeout(window.timeoutInboxList);
-
   try {
-    window.timeoutInboxList = window.setTimeout(async () => {
-      await installInboxList(window, payload, threadTree._rows, offset, false);
-    }, INBOX_LIST_TIMEOUT);
     await installInboxList(window, payload, threadTree._rows, offset, false);
 
     // Only setup event listeners for the first rows to avoid multiple concurrent listeners
