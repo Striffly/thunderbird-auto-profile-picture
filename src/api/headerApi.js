@@ -1220,6 +1220,7 @@ async function handleInboxList(window, payload, threadTree, offset) {
     }, INBOX_LIST_TIMEOUT);
     await installInboxList(window, payload, threadTree._rows, offset, false);
 
+    // Only setup event listeners for the first rows to avoid multiple concurrent listeners
     if (offset < 15) {
       const eventType = await initializeAllEventListeners(threadTree, payload.length, window);
       await new Promise((resolve) => window.setTimeout(resolve, 100));
@@ -1250,6 +1251,7 @@ async function initializeAllEventListeners(threadTree, payloadLength, window) {
   const eventType = await Promise.race([
     setupEventListeners(tableThreadTree, EVENTS_TABLE_TO_LISTEN, window),
     setupEventListeners(threadTree, eventsToListen, window),
+    new Promise(resolve => window.setTimeout(() => resolve("timeout"), 2000))
   ]);
   return eventType;
 }
