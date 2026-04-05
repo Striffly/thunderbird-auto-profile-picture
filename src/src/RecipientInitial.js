@@ -2,6 +2,9 @@ import Author from "./Author.js";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: Groups all static methods together
 export default class RecipientInitial {
+  /** @type {Map<string, string>} */
+  static _colorCache = new Map();
+
   /**
    * Generate a pastel oklch color string for a given identifier (e.g., email or name)
    * Supports light-dark CSS property for color scheme adaptation.
@@ -9,6 +12,10 @@ export default class RecipientInitial {
    * @returns {string} - oklch color string or light-dark() CSS function
    */
   static getColor(identifier) {
+    if (RecipientInitial._colorCache.has(identifier)) {
+      return RecipientInitial._colorCache.get(identifier);
+    }
+
     // Simple hash function
     let hash = 0;
     for (let i = 0; i < identifier.length; i++) {
@@ -26,7 +33,9 @@ export default class RecipientInitial {
     const light = `oklch(${lightnessLight.toFixed(2)} ${chromaLight.toFixed(3)} ${hue.toFixed(2)})`;
     const dark = `oklch(${lightnessDark.toFixed(2)} ${chromaDark.toFixed(3)} ${hue.toFixed(2)})`;
 
-    return `light-dark(${light}, ${dark})`;
+    const color = `light-dark(${light}, ${dark})`;
+    RecipientInitial._colorCache.set(identifier, color);
+    return color;
   }
 
   /**

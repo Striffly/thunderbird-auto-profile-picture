@@ -2,9 +2,7 @@ import defaultSettings from "../settings/defaultSettings.js";
 import Author from "./Author.js";
 import ProfilePictureFetcher from "./ProfilePictureFetcher.js";
 
-const Status = {
-  WAITING: "[WAITING]",
-};
+const MAX_CACHE_SIZE = 500;
 
 /**
  * Service for managing avatar URLs.
@@ -12,10 +10,16 @@ const Status = {
 export default class AvatarService {
   constructor() {
     /**
-     * Cache for storing avatar URLs for the session.
-     * @type {Object.<string, string>}
+     * Resolved avatar URLs for the session (Map preserves insertion order for FIFO eviction).
+     * @type {Map<string, string|null>}
      */
-    this.sessionCacheAvatarUrls = {};
+    this.sessionCacheAvatarUrls = new Map();
+    /**
+     * In-flight fetch promises keyed by lcAuthor.
+     * Concurrent callers for the same author await the same Promise instead of polling.
+     * @type {Map<string, Promise<string|null>>}
+     */
+    this.pendingPromises = new Map();
   }
 
   /**
@@ -23,48 +27,56 @@ export default class AvatarService {
    * @returns {number} - The number of avatars being fetched.
    */
   countWaitingAvatars() {
-    let waiting = 0;
-    for (const key in this.sessionCacheAvatarUrls) {
-      if (this.sessionCacheAvatarUrls[key] === Status.WAITING) {
-        waiting++;
-      }
-    }
-    return waiting;
+    return this.pendingPromises.size;
   }
 
   /**
    * Retrieves the avatar URL for the given author.
    *
-   * Steps:
-   * 1. Check if the avatar URL is already in the session cache
-   * 2. If not in cache:
-   *    a. Check if we're already processing too many requests
-   *    b. Store as waiting in the cache
-   *    c. Fetch and store the avatar URL in the cache
-   * 3. If the avatar is marked as waiting, poll until it's ready
-   * 4. Return the cached avatar URL
+   * Concurrent calls for the same author share a single in-flight Promise,
+   * eliminating the 200 ms polling loop. Resolved results are kept in a
+   * FIFO-evicting Map capped at MAX_CACHE_SIZE entries.
    *
    * @param {Author} author - The author for whom to fetch the avatar URL.
    * @returns {Promise<string|null>} - The avatar URL or null if request limit exceeded or not found.
    */
   async getAvatar(author) {
     const lcAuthor = author.getAuthor().toLowerCase();
-    if (!this.sessionCacheAvatarUrls[lcAuthor]) {
-      if (this.countWaitingAvatars() > defaultSettings.MAX_REQUEST_SIZE) {
-        console.warn(
-          "Too many requests in progress, skipping avatar fetch for " +
-            author.getAuthor(),
-        );
-        return null;
-      }
-      this.sessionCacheAvatarUrls[lcAuthor] = Status.WAITING;
-      const profilePictureFetcher = new ProfilePictureFetcher(window, author);
-      this.sessionCacheAvatarUrls[lcAuthor] =
-        await profilePictureFetcher.getAvatar();
+
+    // Already resolved — return immediately.
+    if (this.sessionCacheAvatarUrls.has(lcAuthor)) {
+      return this.sessionCacheAvatarUrls.get(lcAuthor);
     }
-    while (this.sessionCacheAvatarUrls[lcAuthor] === Status.WAITING) {
-      await new Promise((resolve) => setTimeout(resolve, 200));
+
+    // Already in-flight — share the existing Promise.
+    if (this.pendingPromises.has(lcAuthor)) {
+      return this.pendingPromises.get(lcAuthor);
     }
-    return this.sessionCacheAvatarUrls[lcAuthor];
+
+    if (this.pendingPromises.size > defaultSettings.MAX_REQUEST_SIZE) {
+      console.warn(
+        "Too many requests in progress, skipping avatar fetch for " +
+          author.getAuthor(),
+      );
+      return null;
+    }
+
+    const promise = new ProfilePictureFetcher(window, author)
+      .getAvatar()
+      .then((result) => {
+        // FIFO eviction: drop oldest entry when cache is full.
+        if (this.sessionCacheAvatarUrls.size >= MAX_CACHE_SIZE) {
+          const firstKey = this.sessionCacheAvatarUrls.keys().next().value;
+          this.sessionCacheAvatarUrls.delete(firstKey);
+        }
+        this.sessionCacheAvatarUrls.set(lcAuthor, result);
+        return result;
+      })
+      .finally(() => {
+        this.pendingPromises.delete(lcAuthor);
+      });
+
+    this.pendingPromises.set(lcAuthor, promise);
+    return promise;
   }
 }

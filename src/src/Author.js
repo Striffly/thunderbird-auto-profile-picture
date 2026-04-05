@@ -16,8 +16,12 @@ export default class Author {
     this.publicMails = defaultSettings.publicMails;
   }
 
+  /** @type {Map<string, string>} */
+  static _parseCache = new Map();
+
   /**
    * Parses the email address from the author string.
+   * Results are memoized to avoid repeated slow parseMailboxString() calls.
    * @param {string} author - The author string.
    * @returns {string} - The parsed email address.
    */
@@ -25,19 +29,24 @@ export default class Author {
     if (!author) {
       return "";
     }
+    if (Author._parseCache.has(author)) {
+      return Author._parseCache.get(author);
+    }
+    let result;
     try {
       // only for Thunderbird 128+
       const parsed =
-        await browser.messengerUtilities.parseMailboxString(author);
+        await browser.messengerUtilities.parseMailboxString(author); // SLOW according to Thunderbird Profiler (5ms)
       if (parsed) {
-        return parsed[0].email;
+        result = parsed[0].email;
       }
-    } catch (_error) {}
-    const email = author.match(/<(.+)>/);
-    if (email) {
-      return email[1].toLowerCase().trim();
+    } catch (_error) { }
+    if (!result) {
+      const email = author.match(/<(.+)>/);
+      result = email ? email[1].toLowerCase().trim() : author.toLowerCase().trim();
     }
-    return author.toLowerCase().trim();
+    Author._parseCache.set(author, result);
+    return result;
   }
 
   /**

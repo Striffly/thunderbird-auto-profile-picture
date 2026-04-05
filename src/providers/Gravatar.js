@@ -1,20 +1,25 @@
 import Provider, { Scope } from "./Provider.js";
 
+const hashCache = new Map();
+
+async function sha256Hex(email) {
+  if (hashCache.has(email)) return hashCache.get(email);
+  const data = new TextEncoder().encode(email);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashHex = Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  hashCache.set(email, hashHex);
+  return hashHex;
+}
+
 export default class GravatarProvider extends Provider {
   constructor() {
     super("Gravatar", Scope.EMAIL);
   }
 
   async getUrl(mail) {
-    const email = mail.getEmail();
-    const trimmedLowerEmail = email.trim().toLowerCase();
-    const encoder = new TextEncoder();
-    const data = encoder.encode(trimmedLowerEmail);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
+    const hashHex = await sha256Hex(mail.getEmail().trim().toLowerCase());
     return `https://www.gravatar.com/avatar/${hashHex}?d=404`;
   }
 }

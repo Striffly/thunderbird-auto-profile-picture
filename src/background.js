@@ -34,8 +34,11 @@ const messagesService = new MessagesService(mailService, avatarService);
 async function handleNeedData(tab, result) {
   const dataPopups = result.data.popupValues;
   const urlsDict = {};
+  const seen = new Set();
   for (const popup of dataPopups) {
     const mail = popup.mail;
+    if (seen.has(mail)) continue;
+    seen.add(mail);
     const author = await Author.fromAuthor(mail);
     const url = await avatarService.getAvatar(author);
     urlsDict[mail] = url;
