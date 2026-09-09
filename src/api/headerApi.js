@@ -222,16 +222,44 @@ function mountRecipientAvatar(row, avatar) {
   if (!row || !avatar) {
     return;
   }
-  const threadCardColumn = row.querySelector(".thread-card-column");
-  if (threadCardColumn) {
-    threadCardColumn.style.display = "flex";
-    threadCardColumn.style.flexDirection = "row";
-    cleanupDuplicateRecipientAvatars(threadCardColumn, avatar);
-    if (!threadCardColumn.contains(avatar)) {
-      threadCardColumn.appendChild(avatar);
+  const threadCardRow = row.querySelector(".thread-card-row");
+  if (threadCardRow) {
+    const contentColumn =
+      threadCardRow.closest(".thread-card-column") ||
+      threadCardRow.parentElement;
+    const cardContainer = contentColumn?.parentElement;
+
+    if (cardContainer && contentColumn) {
+      if (contentColumn.style.display) {
+        contentColumn.style.display = "";
+      }
+      if (contentColumn.style.flexDirection) {
+        contentColumn.style.flexDirection = "";
+      }
+
+      const readStatusColumn =
+        cardContainer.querySelector(".read-status-column");
+      if (readStatusColumn) {
+        if (readStatusColumn.style.display) {
+          readStatusColumn.style.display = "";
+        }
+        if (readStatusColumn.style.flexDirection) {
+          readStatusColumn.style.flexDirection = "";
+        }
+      }
+
+      cleanupDuplicateRecipientAvatars(cardContainer, avatar);
+
+      if (
+        avatar.parentNode !== cardContainer ||
+        avatar.nextElementSibling !== contentColumn
+      ) {
+        cardContainer.insertBefore(avatar, contentColumn);
+      }
+      return;
     }
-    return;
   }
+
   const correspondentColumn = row.querySelector(".correspondentcol-column");
   if (correspondentColumn) {
     cleanupDuplicateRecipientAvatars(correspondentColumn, avatar);
@@ -739,6 +767,9 @@ function installCss(window) {
   .recipient-avatar {
     height: var(--recipient-avatar-size);
     width: var(--recipient-avatar-size);
+    min-height: var(--recipient-avatar-size);
+    min-width: var(--recipient-avatar-size);
+    flex-shrink: 0;
     border-radius: 50%;
     text-align: center;
     overflow: hidden;
@@ -778,8 +809,29 @@ function installCss(window) {
   .card-layout[style="height: 60px;"] {
     --placeholder-margin: 1px;
   }
-  .card-container > .thread-card-column:first-child:not(:has(.recipient-avatar)) {
-    margin-right: calc(var(--recipient-avatar-size) + var(--placeholder-margin));
+  #threadTree[rows="thread-card"] .card-container:has(.recipient-avatar),
+  .card-layout .card-container:has(.recipient-avatar) {
+    grid-template-columns: auto auto 1fr !important;
+  }
+  .card-layout .card-container:has(.recipient-avatar) > .read-status-column {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .card-layout .recipient-avatar {
+    grid-column: 2;
+    grid-row: 1;
+    margin-inline-end: var(--placeholder-margin);
+  }
+  #threadTree[rows="thread-card"] .card-container:has(.recipient-avatar) > .thread-card-column:not(.read-status-column),
+  #threadTree[rows="thread-card"] .card-container:has(.recipient-avatar) > .thread-card-column:has(.thread-card-row),
+  .card-layout .card-container:has(.recipient-avatar) > .thread-card-column:not(.read-status-column),
+  .card-layout .card-container:has(.recipient-avatar) > .thread-card-column:has(.thread-card-row) {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .card-container:not(:has(.recipient-avatar)) > .thread-card-column:not(.read-status-column),
+  .card-container:not(:has(.recipient-avatar)) > .thread-card-column:has(.thread-card-row) {
+    margin-inline-start: calc(var(--recipient-avatar-size) + var(--placeholder-margin));
   }
   .table-layout {
     --recipient-avatar-size: 15px;
@@ -795,7 +847,9 @@ function installCss(window) {
     top: var(--top-position);
   }
   `;
-  if (document.getElementById("auto-profile-picture-style")) {
+  const existingStyle = document.getElementById("auto-profile-picture-style");
+  if (existingStyle) {
+    existingStyle.textContent = avatarCss;
     return;
   }
   const style = document.createElement("style");
@@ -1017,7 +1071,7 @@ async function getRowFirstId(rows) {
     const minimumRowKey = Math.min(...rowKeys);
     const row = rows.get(minimumRowKey);
     return parseInt(row.id.replace("threadTree-row", ""), 10);
-  } catch (_error) {}
+  } catch (_error) { }
 
   try {
     const row = rows[0][1];
