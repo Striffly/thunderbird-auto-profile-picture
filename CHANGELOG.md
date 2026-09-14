@@ -5,6 +5,12 @@
 - Add automatic retry delay after 30 days when no profile picture is found
 - Options to disable and enable sources
 
+## 2.5.1 - 2026-09-14
+
+### Fixed
+
+- Fix integration with TB 155
+
 ## 2.5.0 - 2026-02-08
 
 ### Changed
