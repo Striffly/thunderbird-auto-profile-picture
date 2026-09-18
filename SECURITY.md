@@ -15,7 +15,7 @@ This extension requires the following permissions from Thunderbird:
   - *event* ``contacts.onCreated`` is used to trigger avatar fetch and save when a new contact is created (listener in background.js)
   - ``contacts.quickSearch`` and ``contacts.getPhoto`` are used to retrieve the avatar of a contact (first strategy) in order to display it
   - ``contacts.getPhoto`` is also used to determine if a newly created contact has an avatar, in which case, ``contacts.setPhoto`` is called to save the automatically fetched avatar
-- **\<all_urls\>**: used to fetch avatars (full list in /src/providers/)
+- **\<all_urls\>**: used to fetch avatars (full list in /providers/)
 - **Experimental API**: 
   - used to display avatars in the inbox list, in message header and in Thunderbird Conversations
   - used to listen to events in the inbox list

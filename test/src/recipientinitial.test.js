@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import Author from "../../src/src/Author.js";
-import RecipientInitial from "../../src/src/RecipientInitial.js";
+import Author from "../../src/Author.js";
+import RecipientInitial from "../../src/RecipientInitial.js";
 
 const SAMPLE_AUTHOR = "John Doe <john@example.com>";
 const SAMPLE_EMAIL = "john@example.com";

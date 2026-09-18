@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import MailService from "../../src/src/MailService.js";
+import MailService from "../../src/MailService.js";
 
 const GOOGLE_DRIVE_PROXY_EMAIL = "drive-shares-noreply@google.com";
 const GOOGLE_DRIVE_REAL_EMAIL = "real@sender.com";

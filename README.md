@@ -1,6 +1,6 @@
 <div align="center">
 <a href="https://addons.thunderbird.net/thunderbird/addon/auto-profile-picture/">
-<img src="src/images/icon.svg" alt="Logo" width="80" height="80">
+<img src="images/icon.svg" alt="Logo" width="80" height="80">
 </a>
 <h3 align="center">Auto Profile Picture</h3>
 <h4 align="center">Mozilla Thunderbird Add-on</h4>
@@ -74,7 +74,7 @@ If you have a suggestion that would make this better, please fork the repo and c
 - In Thunderbird Add-ons settings page, click on the gear icon
 - Choose `Debug Add-ons`
 - Click on `Load Temporary Add-on...`
-- Select the `manifest.json` file in the `/src/` folder of this repository
+- Select the `manifest.json` file at the root of this repository
 
 ### Tests
 

@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["src/**/*.js", "test/**/*.js", "!src/libs/**/*.js"]
+    "includes": ["**/*.js", "!libs/**/*.js"]
   },
   "formatter": {
     "enabled": true,
@@ -16,7 +16,7 @@
   },
   "linter": {
     "enabled": true,
-    "includes": ["src/**/*.js", "test/**/*.js", "!src/libs/**/*.js"],
+    "includes": ["**/*.js", "!libs/**/*.js"],
     "rules": {
       "recommended": true
     }

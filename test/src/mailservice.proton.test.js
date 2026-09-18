@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import MailService from "../../src/src/MailService.js";
+import MailService from "../../src/MailService.js";
 
 describe("MailService.getCorrespondent - Proton aliases", () => {
   const mailService = new MailService({
