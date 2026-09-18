@@ -8,6 +8,12 @@ const UK_AUTHOR = "John Doe <john@example.co.uk>";
 const NUMBERED_AUTHOR = "123 John Doe <john@example.com>";
 
 describe("Author", () => {
+  // parse() memoizes by input string, so a result cached under one browser
+  // mock would be returned to a later test that installs another.
+  beforeEach(() => {
+    Author._parseCache.clear();
+  });
+
   describe("Constructor", () => {
     it("should create a Mail instance with author and email", () => {
       const mail = new Author(SAMPLE_AUTHOR, SAMPLE_EMAIL);
